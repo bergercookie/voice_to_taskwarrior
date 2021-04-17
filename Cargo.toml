@@ -9,3 +9,13 @@ edition = "2018"
 [dependencies]
 notify = "4.0.16"
 clap = "*"
+anyhow = "1.0.40"
+deepspeech = "0.9.0"
+task-hookrs = "0.7.0"
+audrey = "0.3.0"
+dasp_interpolate = { version = "0.11", features = ["linear"] }
+dasp_signal = "0.11.0"
+chrono = "0.4.19"
+# have to use this version - has to match with the one internally used in
+# task_hookrs
+uuid = { version = "0.7.4", features = ["serde", "v4"] }

@@ -1,11 +1,14 @@
+use anyhow::Result;
 use clap::{App, Arg};
-use notify::{watcher, RecursiveMode, Watcher};
+use notify::{watcher, DebouncedEvent::Create, RecursiveMode, Watcher};
+
 use std::sync::mpsc::channel;
 use std::time::Duration;
+use voicememo2task::voice_to_task_converter::V2TConverter;
 
-fn main() {
+fn main() -> Result<()> {
     let matches = App::new("voicememo2task")
-        .version("0.1")
+        .version("0.1.0")
         .author("Nikos Koukis <nickkouk@gmail.com>")
         .about("Convert voice recordings to TaskWarrior Tasks")
         .arg(
@@ -17,10 +20,13 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("INPUT")
+            Arg::with_name("input-dir")
                 .help("Set the input directory from which to grab the recordings")
                 .required(true)
-                .index(1),
+                .short("i")
+                .long("input-dir")
+                .value_name("INPUT_DIR")
+                .takes_value(true),
         )
         .arg(
             Arg::with_name("v")
@@ -29,6 +35,8 @@ fn main() {
                 .help("Sets the level of verbosity"),
         )
         .get_matches();
+
+    let v2t = V2TConverter::new()?;
 
     // Create a channel to receive the events.
     let (tx, rx) = channel();
@@ -40,12 +48,27 @@ fn main() {
     // Add a path to be watched. All files and directories at that path and
     // below will be monitored for changes.
     watcher
-        .watch("/home/user/test", RecursiveMode::Recursive)
+        // TODO Parametrize this
+        .watch("/home/berger/sync/recordings/", RecursiveMode::Recursive)
         .unwrap();
 
     loop {
         match rx.recv() {
-            Ok(event) => println!("{:?}", event),
+            Ok(event) => match event {
+                Create(pathbuf) => match v2t.convert_to_task(&pathbuf) {
+                    Ok(uuid) => println!(
+                        "Memo \"{}\" => Task: \"{}\"",
+                        pathbuf.to_str().unwrap(),
+                        uuid
+                    ),
+                    Err(err) => println!(
+                        "Memo \"{}\", Error creating a task for it: {}",
+                        pathbuf.to_str().unwrap(),
+                        err
+                    ),
+                },
+                _ => {}
+            },
             Err(e) => println!("watch error: {:?}", e),
         }
     }
