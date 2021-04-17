@@ -1,5 +1,5 @@
 [package]
-name = "voicememo2task"
+name = "voice_to_taskwarrior"
 version = "0.1.0"
 authors = ["Nikos Koukis <nickkouk@gmail.com>"]
 edition = "2018"

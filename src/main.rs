@@ -4,7 +4,7 @@ use notify::{watcher, DebouncedEvent::Create, RecursiveMode, Watcher};
 
 use std::sync::mpsc::channel;
 use std::time::Duration;
-use voicememo2task::voice_to_task_converter::V2TConverter;
+use voice_to_taskwarrior::voice_to_task_converter::V2TConverter;
 
 fn main() -> Result<()> {
     let matches = App::new("voicememo2task")
