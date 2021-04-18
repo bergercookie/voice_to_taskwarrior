@@ -3,7 +3,7 @@ use audrey::read::Reader;
 use std::cell::RefCell;
 use std::fs::canonicalize;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::vec;
 use task_hookrs::annotation::Annotation;
 use task_hookrs::tag::Tag;
@@ -18,9 +18,10 @@ use task_hookrs::task::Task;
 use task_hookrs::tw;
 use task_hookrs::uda::UDA;
 
+use crate::config::{TaskWarriorConfig,DeepSpeechConfig};
+
 pub struct V2TConverter {
     model: RefCell<Model>,
-    taskrc_override: Option<PathBuf>,
 
     /// Target sample rate [Hz]. If sample doesn't match, we'll interpolate
     sample_rate: u32,
@@ -28,15 +29,19 @@ pub struct V2TConverter {
 }
 
 impl V2TConverter {
-    pub fn new() -> Result<Self> {
+    pub fn new(deepspeech: DeepSpeechConfig, tw_config: TaskWarriorConfig) -> Result<Self> {
         // TODO Parametrize this
-        let mut model = Model::load_from_files(
-                Path::new("/home/berger/sync/bulk/software/deepspeech_native_client.amd64.cpu.linux/deepspeech-0.9.0-models.pbmm"))?;
-        model.enable_external_scorer(Path::new("/home/berger/sync/bulk/software/deepspeech_native_client.amd64.cpu.linux/deepspeech-0.9.3-models.scorer"))?;
+        let mut model = Model::load_from_files(Path::new(deepspeech.model.to_str().unwrap()))?;
+        match deepspeech.scorer {
+            Some(s) => {
+                model.enable_external_scorer(Path::new(s.to_str().unwrap()))?;
+            }
+            None => {}
+        }
 
+        // TODO Deal with default tag
         Ok(Self {
             model: RefCell::new(model),
-            taskrc_override: None,
             sample_rate: 16_000,
             default_tag: "voice_memo".into(),
         })
@@ -56,7 +61,7 @@ impl V2TConverter {
 
         // make sure that we have mono
         if reader.description().channel_count() != 1 {
-            anyhow!("Can only handle mono files!");
+            return Err(anyhow!("Can only handle mono files!"));
         }
 
         let sample_rate = reader.description().sample_rate();

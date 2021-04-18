@@ -19,3 +19,8 @@ chrono = "0.4.19"
 # have to use this version - has to match with the one internally used in
 # task_hookrs
 uuid = { version = "0.7.4", features = ["serde", "v4"] }
+xdg = "2.2.0"
+toml = "0.5.8"
+serde_derive = "1.0.125"
+serde = "1.0.125"
+shellexpand = "2.1.0"

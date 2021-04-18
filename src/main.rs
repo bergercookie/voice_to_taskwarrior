@@ -4,39 +4,43 @@ use notify::{watcher, DebouncedEvent::Create, RecursiveMode, Watcher};
 
 use std::sync::mpsc::channel;
 use std::time::Duration;
+use voice_to_taskwarrior::config::ConfigBuilder;
 use voice_to_taskwarrior::voice_to_task_converter::V2TConverter;
 
 fn main() -> Result<()> {
-    let matches = App::new("voicememo2task")
-        .version("0.1.0")
-        .author("Nikos Koukis <nickkouk@gmail.com>")
-        .about("Convert voice recordings to TaskWarrior Tasks")
-        .arg(
-            Arg::with_name("config")
-                .short("c")
-                .long("config")
-                .value_name("FILE")
-                .help("Set the configuration file to be used")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("input-dir")
-                .help("Set the input directory from which to grab the recordings")
-                .required(true)
-                .short("i")
-                .long("input-dir")
-                .value_name("INPUT_DIR")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("v")
-                .short("v")
-                .multiple(true)
-                .help("Sets the level of verbosity"),
-        )
-        .get_matches();
+    // let matches = App::new("voice_to_taskwarrior")
+    //     .version("0.1.0")
+    //     .author("Nikos Koukis <nickkouk@gmail.com>")
+    //     .about("Convert voice recordings to TaskWarrior Tasks")
+    //     .arg(
+    //         Arg::with_name("config")
+    //             .short("c")
+    //             .long("config")
+    //             .value_name("FILE")
+    //             .help("Set the configuration file to be used")
+    //             .takes_value(true),
+    //     )
+    //     .arg(
+    //         Arg::with_name("input-dir")
+    //             .help("Set the input directory from which to grab the recordings")
+    //             .required(true)
+    //             .short("i")
+    //             .long("input-dir")
+    //             .value_name("INPUT_DIR")
+    //             .takes_value(true),
+    //     )
+    //     .arg(
+    //         Arg::with_name("v")
+    //             .short("v")
+    //             .multiple(true)
+    //             .help("Sets the level of verbosity"),
+    //     )
+    //     .get_matches();
 
-    let v2t = V2TConverter::new()?;
+    let app_name = "v2t";
+    let config = ConfigBuilder::new(&app_name)?.get();
+
+    let v2t = V2TConverter::new(config.deepspeech, config.tw.unwrap())?;
 
     // Create a channel to receive the events.
     let (tx, rx) = channel();
@@ -48,8 +52,7 @@ fn main() -> Result<()> {
     // Add a path to be watched. All files and directories at that path and
     // below will be monitored for changes.
     watcher
-        // TODO Parametrize this
-        .watch("/home/berger/sync/recordings/", RecursiveMode::Recursive)
+        .watch(config.input_dir, RecursiveMode::NonRecursive)
         .unwrap();
 
     loop {
