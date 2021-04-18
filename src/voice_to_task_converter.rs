@@ -49,7 +49,14 @@ impl V2TConverter {
 
     /// Convert the given voice memo to a TaskWarrior task
     pub fn convert_to_task(&self, p: &Path) -> Result<Uuid> {
-        let task_content = self.voice_recognition(p)?;
+        let task_content = self.voice_recognition(p)?.to_lowercase();
+
+        // skip word detected? --------------------------------------------------------------------
+        if let Some(ignore_word) = &self.tw_config.ignore_word {
+            if task_content.starts_with(ignore_word) {
+                return Err(anyhow!("Ignore word detected, skipping task creation"));
+            }
+        }
 
         let uuid = self.create_task(&task_content, p)?;
         Ok(uuid)
@@ -86,17 +93,14 @@ impl V2TConverter {
     }
 
     fn create_task(&self, task_content: &str, ref_fpath: &Path) -> Result<Uuid> {
-        // sanitize
-        let content = task_content.to_lowercase();
-
-        let mut t = self.assemble_task(&content);
+        let mut t = self.assemble_task(task_content);
         let entry_date = chrono::offset::Local::now().naive_utc();
 
         // TODO parse due date --------------------------------------------------------------------
         // // TODO currently I support only a single word after the due word
         // let due_word = self.tw_config.due_word.clone().unwrap();
 
-        // let content_v: Vec<&str> = content.split(" ").collect();
+        // let content_v: Vec<&str> = task_content.split(" ").collect();
         // println!("BEFORE remove content_v: {:#?}", content_v);
         // let schedule_at: Some<String> = None
         // match content_v

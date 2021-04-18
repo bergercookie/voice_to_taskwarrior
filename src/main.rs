@@ -8,8 +8,8 @@ use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::time::Duration;
 use voice_to_taskwarrior::config::ConfigBuilder;
-use voice_to_taskwarrior::voice_to_task_converter::V2TConverter;
 use voice_to_taskwarrior::logger::get_logger;
+use voice_to_taskwarrior::voice_to_task_converter::V2TConverter;
 
 use slog::*;
 
@@ -154,12 +154,23 @@ fn convert_mark_inform(
             let mut f = std::fs::File::create(last_voice_memo_mark_path.to_str().unwrap())?;
             f.write(voice_memo.to_str().unwrap().as_bytes())?;
         }
-        Err(err) => error!(
-            logger,
-            "Memo \"{}\", Error creating a task for it: {}",
-            voice_memo.to_str().unwrap(),
-            err
-        ),
+        Err(err) => {
+            if err.to_string().starts_with("Ignore word detected") { // look away now, string comparison for errors
+                warn!(logger, "Memo \"{}\" skipped...", voice_memo.to_str().unwrap());
+
+                // write down the last voice task that I edited
+                let mut f = std::fs::File::create(last_voice_memo_mark_path.to_str().unwrap())?;
+                f.write(voice_memo.to_str().unwrap().as_bytes())?;
+            }
+            else {
+                error!(
+                    logger,
+                    "Memo \"{}\", Error creating a task for it: {}",
+                    voice_memo.to_str().unwrap(),
+                    err
+                )
+            }
+        },
     }
     Ok(())
 }
