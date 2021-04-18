@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+
 use audrey::read::Reader;
 use std::cell::RefCell;
 use std::fs::canonicalize;
@@ -57,7 +58,7 @@ impl V2TConverter {
 
     fn voice_recognition(&self, p: &Path) -> Result<String> {
         let f = File::open(p)?;
-        let mut reader = Reader::new(f).unwrap();
+        let mut reader = Reader::new(f)?;
 
         // make sure that we have mono
         if reader.description().channel_count() != 1 {
@@ -111,7 +112,6 @@ impl V2TConverter {
         t.set_annotations::<_, Vec<Annotation>>(Some(annotations));
 
         tw::save(Some(&t)).unwrap();
-        println!("Task content to be created: {:#?}", t);
         return Ok(t.uuid().clone());
     }
 
