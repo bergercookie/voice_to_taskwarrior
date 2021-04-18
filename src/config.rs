@@ -107,6 +107,8 @@ impl DataSanitizationAndVerification for DeepSpeechConfig {
 pub struct TaskWarriorConfig {
     // TODO
     pub ignore_word: Option<String>,
+    pub due_word: Option<String>,
+    pub project_word: Option<String>,
     pub extra_tags: Option<Vec<String>>,
 }
 
@@ -123,6 +125,8 @@ impl Default for TaskWarriorConfig {
     fn default() -> Self {
         Self {
             ignore_word: Some("skip".to_string()),
+            project_word: Some("project".to_string()),
+            due_word: Some("schedule".to_string()),
             extra_tags: Some(vec!["voice_memo".to_string()]),
         }
     }

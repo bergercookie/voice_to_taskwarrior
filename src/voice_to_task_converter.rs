@@ -19,19 +19,18 @@ use task_hookrs::task::Task;
 use task_hookrs::tw;
 use task_hookrs::uda::UDA;
 
-use crate::config::{TaskWarriorConfig,DeepSpeechConfig};
+use crate::config::{DeepSpeechConfig, TaskWarriorConfig};
 
 pub struct V2TConverter {
     model: RefCell<Model>,
 
     /// Target sample rate [Hz]. If sample doesn't match, we'll interpolate
     sample_rate: u32,
-    default_tag: Tag,
+    tw_config: TaskWarriorConfig,
 }
 
 impl V2TConverter {
     pub fn new(deepspeech: DeepSpeechConfig, tw_config: TaskWarriorConfig) -> Result<Self> {
-        // TODO Parametrize this
         let mut model = Model::load_from_files(Path::new(deepspeech.model.to_str().unwrap()))?;
         match deepspeech.scorer {
             Some(s) => {
@@ -44,7 +43,7 @@ impl V2TConverter {
         Ok(Self {
             model: RefCell::new(model),
             sample_rate: 16_000,
-            default_tag: "voice_memo".into(),
+            tw_config,
         })
     }
 
@@ -87,19 +86,43 @@ impl V2TConverter {
     }
 
     fn create_task(&self, task_content: &str, ref_fpath: &Path) -> Result<Uuid> {
-        let mut t = self.assemble_task(task_content);
+        // sanitize
+        let content = task_content.to_lowercase();
+
+        let mut t = self.assemble_task(&content);
         let entry_date = chrono::offset::Local::now().naive_utc();
 
         // TODO parse due date --------------------------------------------------------------------
+        // // TODO currently I support only a single word after the due word
+        // let due_word = self.tw_config.due_word.clone().unwrap();
+
+        // let content_v: Vec<&str> = content.split(" ").collect();
+        // println!("BEFORE remove content_v: {:#?}", content_v);
+        // let schedule_at: Some<String> = None
+        // match content_v
+        //     .iter()
+        //     .position(|word| word == &due_word)
+        //     {
+        //         Some(pos) => {
+        //             content_v.remove(pos);
+        //             schedule_at = content_v.remove(pos);
+        //         }
+        //         None => {}
+        //     }
+        // println!("AFTER remove content_v: {:#?}", content_v);
+
         // t.set_due();
 
-        // TODO assign tags + default tag ---------------------------------------------------------
-        let mut tags = Vec::new();
-        tags.push(self.default_tag.clone());
+        // parse tags + default tags --------------------------------------------------------------
+        let tags = match &self.tw_config.extra_tags {
+            Some(extra_tags) => extra_tags.clone(),
+            None => Vec::new(),
+        };
 
+        // TODO detect tags in voice memo
         t.set_tags::<_, Vec<Tag>>(Some(tags));
 
-        // add annotations -------------------------------------------------------------------
+        // add annotations ------------------------------------------------------------------------
         let annotations = vec![Annotation::new(
             entry_date.into(),
             format!(
@@ -115,7 +138,10 @@ impl V2TConverter {
         return Ok(t.uuid().clone());
     }
 
-    fn assemble_task(&self, description: &str) -> Task {
+    fn assemble_task<S: AsRef<str>>(&self, description: S) -> Task
+    where
+        String: From<S>,
+    {
         let date = chrono::offset::Local::now().naive_utc();
         Task::new(
             None,
